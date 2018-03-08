@@ -1,0 +1,23 @@
+{
+  "name": "ramen_journal",
+  "version": "1.0.0",
+  "description": "Ramen Journal",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/OohNahGii/ramen_journal.git"
+  },
+  "author": "Grant Ramil",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/OohNahGii/ramen_journal/issues"
+  },
+  "homepage": "https://github.com/OohNahGii/ramen_journal#readme",
+  "dependencies": {
+    "express": "^4.16.2",
+    "mysql": "^2.15.0"
+  }
+}
