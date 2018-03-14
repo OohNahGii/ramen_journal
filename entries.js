@@ -25,12 +25,21 @@ let Entries = function () {
   const dbConn = mysql.createConnection(config.mysql);
   dbConn.connect(); // When to end connection?
 
+  function constructEntryHref(entry) {
+    return '/' + entry.entry_id + '-' + entry.entry_name.trim().toLowerCase().replace(' ', '-');
+  }
+
   this.getEntries = (page, res) => {
     const offset = (page - 1) * numEntriesPerPage;
     dbConn.query(selectListQuery, [offset], (err, rows, fields) => {
       if (err) {
         throw err; // Need to handle gracefully...
       }
+
+      // Add URL to each row
+      rows.forEach((entry) => {
+        entry.href = constructEntryHref(entry);
+      });
       res.send(rows);
     });
   };
@@ -40,7 +49,6 @@ let Entries = function () {
       if (err) {
         throw err; // Need to handle gracefully...
       }
-      console.log(rows);
       res.send(rows.length ? rows[0] : {});
     });
   };
