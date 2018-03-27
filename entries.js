@@ -24,14 +24,14 @@ const selectEntryQuery =
 // Missing entry_id and entry_url
 const stubbedMockListEntry = {
   entry_name: 'Generic Ramen',
-  picture: './ramen.jpg',
+  picture: '../assets/ramen.jpg',
   restaurant_name: 'Generic Ramen Restaurant',
   restaurant_url: 'http://www.google.com'
 };
 // Missing entry_id
 const stubbedMockEntry = {
   entry_name: 'Generic Ramen',
-  picture: './ramen.jpg',
+  picture: '../assets/ramen.jpg',
   restaurant_name: 'Generic Ramen Restaurant',
   restaurant_url: 'http://www.google.com',
   city: 'Mountain View',
@@ -72,7 +72,7 @@ let Entries = function () {
   }
 
   function constructEntryUrl(entry) {
-    return '/' + entry.entry_id + '-' + entry.entry_name.trim().toLowerCase().replace(' ', '-');
+    return '/' + entry.entry_id /*+ '-' + entry.entry_name.trim().toLowerCase().replace(' ', '-')*/;
   }
 
   this.getEntries = (page, res) => {
