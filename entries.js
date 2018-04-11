@@ -39,14 +39,16 @@ const stubbedMockEntry = {
   lat: 37.4222801,
   lng: -122.0927588,
   entry_date: '14/03/2018',
-  rating: 4.5,
+  rating: 3.8,
   noodles: 'Thin, straight',
-  noodles_rating: 5.0,
+  noodles_rating: 3.0,
   broth: 'Shoyu',
   broth_rating: 4.5,
   toppings: 'Egg, pork belly, nori, bamboo shoots',
   toppings_rating: 4.0,
-  notes: 'This part is basically like a yelp review. Still need to figure out how to break this into paragraphs.'
+  notes: ['Blah blah blah something about the ramen.',
+   'Blah blah blah more stuff about the ramen.',
+   'I think 3 sections is good enough for now.']
 };
 
 let Entries = function () {
