@@ -1,16 +1,16 @@
 const mysql = require('mysql');
 const config = require('./config.json');
 
-const numEntriesPerPage = 25;
 const selectListQuery = 
-  'SELECT entry_id, entry_name, picture, r.restaurant_name, r.website FROM entry ' + 
-  'LEFT JOIN restaurant r ON (entry.restaurant_id = r.restaurant_id) ' + 
-  'ORDER BY entry_date ' + 
-  'LIMIT 25 ' + 
-  'OFFSET ?';
+  'SELECT entry.entry_id, entry_name, i.image_name AS image, r.restaurant_name, r.restaurant_url FROM entry ' +
+  'LEFT JOIN restaurant r ON (entry.restaurant_id = r.restaurant_id) ' +
+  'RIGHT JOIN image i ON (entry.entry_id = i.entry_id) ' +
+  'WHERE i.image_type = "list" ' +
+  'ORDER BY entry_date DESC';
+
 const selectEntryQuery =
-  'SELECT entry_id, entry_name, picture, r.restaurant_name, r.restaurant_url, ' +
-  'r.locality AS city, r.administrative_area AS state, x(r.lat_lng) AS lat, y(r.lat_lng) AS lng, ' +
+  'SELECT entry.entry_id, entry_name, i.image_name AS image, r.restaurant_name, r.restaurant_url, ' +
+  'r.city, r.state, x(r.lat_lng) AS lat, y(r.lat_lng) AS lng, ' +
   'entry_date, entry.rating AS rating, n.description AS noodles, n.rating AS noodles_rating, ' +
   'b.description AS broth, b.rating AS broth_rating, ' +
   't.description AS toppings, t.rating AS toppings_rating, notes ' +
@@ -19,19 +19,22 @@ const selectEntryQuery =
   'LEFT JOIN noodles n ON (entry.noodles_id = n.noodles_id) ' +
   'LEFT JOIN broth b ON (entry.broth_id = b.broth_id) ' +
   'LEFT JOIN toppings t ON (entry.toppings_id = t.toppings_id) ' +
-  'WHERE entry_id = ?';
+  'RIGHT JOIN image i ON (entry.entry_id = i.entry_id) ' +
+  'WHERE entry.entry_id = ? ' +
+  'AND i.image_type = "detail"';
 
 // Missing entry_id and entry_url
 const stubbedMockListEntry = {
   entry_name: 'Generic Ramen',
-  picture: '../assets/ramen.jpg',
+  image: '../assets/ramen.jpg',
   restaurant_name: 'Generic Ramen Restaurant',
   restaurant_url: 'http://www.google.com'
 };
+
 // Missing entry_id
 const stubbedMockEntry = {
   entry_name: 'Generic Ramen',
-  picture: '../assets/ramen.jpg',
+  image: '../assets/ramen.jpg',
   restaurant_name: 'Generic Ramen Restaurant',
   restaurant_url: 'http://www.google.com',
   city: 'Mountain View',
@@ -54,13 +57,14 @@ const stubbedMockEntry = {
 let Entries = function () {
   let dbConn;
   if (!config.entries.mock) {
-    dbConn = mysql.createConnection(config.mysql);
+    dbConn = mysql.createConnection(config.mysql); // Note: user defined in the config should be read-only
     dbConn.connect(); // When to end connection?
   }
 
-  function generateMockEntries(offset) {
+  function generateMockEntries() {
+    const numEntries = 25;
     let entries = [];
-    for (let entryId = offset; entryId < offset + numEntriesPerPage; entryId++) {
+    for (let entryId = numEntries; entryId < numEntries + numEntriesPerPage; entryId++) {
       let entry = Object.assign({}, stubbedMockListEntry);
       entry.entry_id = entryId;
       entry.entry_url = constructEntryUrl(entry);
@@ -78,19 +82,20 @@ let Entries = function () {
   }
 
   this.getEntries = (page, res) => {
-    const offset = (page - 1) * numEntriesPerPage;
     if (!config.entries.mock) {
-      dbConn.query(selectListQuery, [offset], (err, rows, fields) => {
+      dbConn.query(selectListQuery, (err, rows, fields) => {
         if (err) {
-          throw err; // Need to handle gracefully...
+          console.log(err);
+          res.send([]);
+        } else {
+          rows.forEach((entry) => {
+            entry.entry_url = constructEntryUrl(entry);
+          });
+          res.send(rows);
         }
-        rows.forEach((entry) => {
-          entry.entry_url = constructEntryUrl(entry);
-        });
-        res.send(rows);
       });
     } else {
-      res.send(generateMockEntries(offset));
+      res.send(generateMockEntries());
     }
   };
 
@@ -98,9 +103,11 @@ let Entries = function () {
     if (!config.entries.mock) {
       dbConn.query(selectEntryQuery, [entryId], (err, rows, fields) => {
         if (err) {
-          throw err; // Need to handle gracefully...
+          console.log(err);
+          res.send({});
+        } else {
+          res.send(rows.length ? rows[0] : {});
         }
-        res.send(rows.length ? rows[0] : {});
       });
     } else {
       res.send(generateMockEntry(entryId));

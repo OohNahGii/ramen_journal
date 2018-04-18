@@ -20,12 +20,7 @@ if (config.local) {
 
 
 app.get('/entries', (req, res) => {
-  const page = req.query.page;
-  if (!page || !isNaturalNumber(page)) {
-    res.send([]);
-  } else {
-    entries.getEntries(page, res);
-  }
+  entries.getEntries(page, res);
 });
 
 app.get('/entries/:entryId', (req, res) => {
