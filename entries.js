@@ -1,11 +1,17 @@
 const mysql = require('mysql');
 const config = require('./config.json');
 
+const notesSeparator = ';;';
+const imageTypes = {
+  list: 'list',
+  detail: 'detail'
+};
+
 const selectListQuery = 
   'SELECT entry.entry_id, entry_name, i.image_name AS image, r.restaurant_name, r.restaurant_url FROM entry ' +
   'LEFT JOIN restaurant r ON (entry.restaurant_id = r.restaurant_id) ' +
   'RIGHT JOIN image i ON (entry.entry_id = i.entry_id) ' +
-  'WHERE i.image_type = "list" ' +
+  'WHERE i.image_type = "' + imageTypes.list + '" ' +
   'ORDER BY entry_date DESC';
 
 const selectEntryQuery =
@@ -21,7 +27,7 @@ const selectEntryQuery =
   'LEFT JOIN toppings t ON (entry.toppings_id = t.toppings_id) ' +
   'RIGHT JOIN image i ON (entry.entry_id = i.entry_id) ' +
   'WHERE entry.entry_id = ? ' +
-  'AND i.image_type = "detail"';
+  'AND i.image_type = "' + imagesTypes.detail + '"';
 
 // Missing entry_id and entry_url
 const stubbedMockListEntry = {
@@ -81,6 +87,10 @@ let Entries = function () {
     return '/' + entry.entry_id /*+ '-' + entry.entry_name.trim().toLowerCase().replace(' ', '-')*/;
   }
 
+  function parseNotes(notes) {
+    return notes.split(notesSeparator);
+  }
+
   this.getEntries = (page, res) => {
     if (!config.entries.mock) {
       dbConn.query(selectListQuery, (err, rows, fields) => {
@@ -106,7 +116,14 @@ let Entries = function () {
           console.log(err);
           res.send({});
         } else {
-          res.send(rows.length ? rows[0] : {});
+          if (rows.length) {
+            const tempEntry = rows[0];
+            let entry = Object.assign({}, tempEntry);
+            entry.notes = parseNotes(tempEntry.notes);
+            res.send(entry);
+          } else {
+            res.send({});
+          }
         }
       });
     } else {
