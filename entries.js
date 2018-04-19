@@ -17,7 +17,7 @@ const selectListQuery =
 const selectEntryQuery =
   'SELECT entry.entry_id, entry_name, i.image_name AS image, r.restaurant_name, r.restaurant_url, ' +
   'r.city, r.state, x(r.lat_lng) AS lat, y(r.lat_lng) AS lng, ' +
-  'entry_date, entry.rating AS rating, n.description AS noodles, n.rating AS noodles_rating, ' +
+  'DATE_FORMAT(entry_date, "%b %D, %Y") as entry_date, entry.rating AS rating, n.description AS noodles, n.rating AS noodles_rating, ' +
   'b.description AS broth, b.rating AS broth_rating, ' +
   't.description AS toppings, t.rating AS toppings_rating, notes ' +
   'FROM entry ' +
