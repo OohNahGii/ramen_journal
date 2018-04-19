@@ -27,7 +27,7 @@ const selectEntryQuery =
   'LEFT JOIN toppings t ON (entry.toppings_id = t.toppings_id) ' +
   'RIGHT JOIN image i ON (entry.entry_id = i.entry_id) ' +
   'WHERE entry.entry_id = ? ' +
-  'AND i.image_type = "' + imagesTypes.detail + '"';
+  'AND i.image_type = "' + imageTypes.detail + '"';
 
 // Missing entry_id and entry_url
 const stubbedMockListEntry = {
@@ -91,7 +91,7 @@ let Entries = function () {
     return notes.split(notesSeparator);
   }
 
-  this.getEntries = (page, res) => {
+  this.getEntries = (res) => {
     if (!config.entries.mock) {
       dbConn.query(selectListQuery, (err, rows, fields) => {
         if (err) {

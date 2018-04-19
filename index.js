@@ -20,7 +20,7 @@ if (config.local) {
 
 
 app.get('/entries', (req, res) => {
-  entries.getEntries(page, res);
+  entries.getEntries(res);
 });
 
 app.get('/entries/:entryId', (req, res) => {
