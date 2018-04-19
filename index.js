@@ -1,7 +1,13 @@
 const express = require('express');
-const entries = require('./entries.js');
 const config = require('./config.json');
 const app = express();
+
+let entries;
+if (config.entries.mock) {
+  entries = require('./MockEntries.js');
+} else {
+  entries = require('./Entries.js');
+}
 
 function isNaturalNumber(str) {
   let num = Math.floor(Number(str));
