@@ -1,5 +1,5 @@
 const mysql = require('mysql');
-//const redis = require('redis');
+const redis = require('redis');
 const config = require('./config.json');
 
 const notesSeparator = ';;';
@@ -30,6 +30,9 @@ const selectEntryQuery =
   'WHERE entry.entry_id = ? ' +
   'AND i.image_type = "' + imageTypes.detail + '"';
 
+const listCacheKey = 'entries';
+const entryCacheKey = 'entry-';
+
 
 let Entries = function () {
   // Setup db connection
@@ -37,7 +40,7 @@ let Entries = function () {
   db.connect(); // When to end connection?
 
   // Setup cache connection
-  //const cache = redis.createClient();
+  const cache = redis.createClient();
 
   function constructEntryUrl(entry) {
     return '/' + entry.entry_id /*+ '-' + entry.entry_name.trim().toLowerCase().replace(' ', '-')*/;
@@ -47,34 +50,57 @@ let Entries = function () {
     return notes.split(notesSeparator);
   }
 
+  function constructEntryCacheKey(entryId) {
+    return entryCacheKey + entryId;
+  }
+
   this.getEntries = (res) => {
-    db.query(selectListQuery, (err, rows, fields) => {
-      if (err) {
-        console.log(err);
-        res.send([]);
+    cache.get(listCacheKey, function (err, reply) {
+      if (reply) {
+        console.log('Retrieving entries from cache');
+        res.send(JSON.parse(reply));
       } else {
-        rows.forEach((entry) => {
-          entry.entry_url = constructEntryUrl(entry);
+        console.log('Retrieving entries from db');
+        db.query(selectListQuery, (err, rows, fields) => {
+          if (err) {
+            console.log(err);
+            res.send([]);
+          } else {
+            rows.forEach((entry) => {
+              entry.entry_url = constructEntryUrl(entry);
+            });
+            cache.set(listCacheKey, JSON.stringify(rows));
+            res.send(rows);
+          }
         });
-        res.send(rows);
       }
     });
   };
 
   this.getEntry = (entryId, res) => {
-    db.query(selectEntryQuery, [entryId], (err, rows, fields) => {
-      if (err) {
-        console.log(err);
-        res.send({});
+    const cacheKey = constructEntryCacheKey(entryId);
+    cache.get(cacheKey, function (err, reply) {
+      if (reply) {
+        console.log('Retrieving entry "' + entryId + '" from cache');
+        res.send(JSON.parse(reply));
       } else {
-        if (rows.length) {
-          const tempEntry = rows[0];
-          let entry = Object.assign({}, tempEntry);
-          entry.notes = parseNotes(tempEntry.notes);
-          res.send(entry);
-        } else {
-          res.send({});
-        }
+        console.log('Retrieving entry "' + entryId + '" from db');
+        db.query(selectEntryQuery, [entryId], (err, rows, fields) => {
+          if (err) {
+            console.log(err);
+            res.send({});
+          } else {
+            if (rows.length) {
+              const tempEntry = rows[0];
+              let entry = Object.assign({}, tempEntry);
+              entry.notes = parseNotes(tempEntry.notes);
+              cache.set(cacheKey, JSON.stringify(entry));
+              res.send(entry);
+            } else {
+              res.send({});
+            }
+          }
+        });
       }
     });
   };
