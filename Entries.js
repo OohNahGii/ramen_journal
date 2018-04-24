@@ -1,5 +1,5 @@
-const mysql = require('mysql');
-const redis = require('redis');
+const db = require('./PromiseDatabase');
+const cache = require('./PromiseCache');
 const config = require('./config.json');
 
 const notesSeparator = ';;';
@@ -35,12 +35,9 @@ const entryCacheKey = 'entry-';
 
 
 let Entries = function () {
-  // Setup db connection
-  const db = mysql.createConnection(config.mysql); // Note: user defined in the config should be read-only
-  db.connect(); // When to end connection?
-
-  // Setup cache connection
-  const cache = redis.createClient();
+  // Connect to db and cache
+  db.connect(config.mysql); // Note: user defined in the config should be read-only
+  cache.connect();
 
   function constructEntryUrl(entry) {
     return '/' + entry.entry_id /*+ '-' + entry.entry_name.trim().toLowerCase().replace(' ', '-')*/;
@@ -54,55 +51,48 @@ let Entries = function () {
     return entryCacheKey + entryId;
   }
 
-  this.getEntries = (res) => {
-    cache.get(listCacheKey, function (err, reply) {
-      if (reply) {
-        console.log('Retrieving entries from cache');
-        res.send(JSON.parse(reply));
+  this.getEntries = async (res) => {
+    try {
+      const cacheEntries = await cache.get(listCacheKey);
+      if (cacheEntries) {
+        res.send(JSON.parse(cacheEntries));
       } else {
-        console.log('Retrieving entries from db');
-        db.query(selectListQuery, (err, rows, fields) => {
-          if (err) {
-            console.log(err);
-            res.send([]);
-          } else {
-            rows.forEach((entry) => {
-              entry.entry_url = constructEntryUrl(entry);
-            });
-            cache.set(listCacheKey, JSON.stringify(rows));
-            res.send(rows);
-          }
+        const rows = await db.query(selectListQuery);
+        rows.forEach(entry => {
+          entry.entry_url = constructEntryUrl(entry);
         });
+        await cache.set(listCacheKey, JSON.stringify(rows));
+        res.send(rows);
       }
-    });
+    } catch (error) {
+      console.log(error);
+      res.send([]);
+    }
   };
 
-  this.getEntry = (entryId, res) => {
+  this.getEntry = async (entryId, res) => {
     const cacheKey = constructEntryCacheKey(entryId);
-    cache.get(cacheKey, function (err, reply) {
-      if (reply) {
-        console.log('Retrieving entry "' + entryId + '" from cache');
-        res.send(JSON.parse(reply));
+    try {
+      const cacheEntry = await cache.get(cacheKey);
+      if (cacheEntry) {
+        res.send(JSON.parse(cacheEntry));
       } else {
-        console.log('Retrieving entry "' + entryId + '" from db');
-        db.query(selectEntryQuery, [entryId], (err, rows, fields) => {
-          if (err) {
-            console.log(err);
-            res.send({});
-          } else {
-            if (rows.length) {
-              const tempEntry = rows[0];
-              let entry = Object.assign({}, tempEntry);
-              entry.notes = parseNotes(tempEntry.notes);
-              cache.set(cacheKey, JSON.stringify(entry));
-              res.send(entry);
-            } else {
-              res.send({});
-            }
-          }
-        });
+        const rows = await db.query(selectEntryQuery, [entryId]);
+        if (rows.length) {
+          const tempEntry = rows[0];
+          let entry = Object.assign({}, tempEntry);
+          entry.notes = parseNotes(tempEntry.notes);
+          await cache.set(cacheKey, JSON.stringify(entry));
+          res.send(entry);
+        } else {
+          console.log('No entry found with id:' + entryId);
+          res.send({});
+        }
       }
-    });
+    } catch (error) {
+      console.log(error);
+      res.send({});
+    }
   };
 };
 

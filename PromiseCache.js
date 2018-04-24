@@ -46,4 +46,4 @@ class PromiseCache {
   }
 }
 
-module.exports(new PromiseCache());
+module.exports = new PromiseCache();

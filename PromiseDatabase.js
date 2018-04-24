@@ -44,3 +44,5 @@ class PromiseDatabase {
     });
   }
 }
+
+module.exports = new PromiseDatabase();
