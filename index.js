@@ -25,16 +25,28 @@ if (config.local) {
 }
 
 
-app.get('/entries', (req, res) => {
-  entries.getEntries(res);
+app.get('/entries', async (req, res) => {
+  try {
+    await entries.connect();
+    await entries.getEntries(res);
+  } catch (error) {
+    console.log(error);
+    res.send([]);
+  }
 });
 
-app.get('/entries/:entryId', (req, res) => {
-  const entryId = req.params.entryId;
-  if (!isNaturalNumber(entryId)) {
+app.get('/entries/:entryId', async (req, res) => {
+  try {
+    const entryId = req.params.entryId;
+    if (!isNaturalNumber(entryId)) {
+      res.send({});
+    } else {
+      await entries.connect();
+      await entries.getEntry(entryId, res);
+    }
+  } catch (error) {
+    console.log(error);
     res.send({});
-  } else {
-    entries.getEntry(entryId, res);
   }
 });
 

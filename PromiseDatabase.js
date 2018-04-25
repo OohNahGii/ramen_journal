@@ -7,19 +7,19 @@ class PromiseDatabase {
 
   connect(config) {
     return new Promise((resolve, reject) => {
-      try {
-        this.db = mysql.createConnection(config);
-        this.db.connect();
-        resolve();
-      } catch (error) {
-        reject(error);
-      }
+      this.db = mysql.createConnection(config);
+      this.db.connect(function (error) {
+        if (error) {
+          reject(new Error('Error connection to database'));
+        } else {
+          resolve();
+        }
+      });
     });
   }
 
   isConnected() {
-    // Actually check connection by checking the 'state' variable?
-    return !!this.db;
+    return this.db && this.db.state !== 'disconnected';
   }
 
   query(sql, args) {

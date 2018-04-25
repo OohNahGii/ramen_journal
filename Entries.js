@@ -33,34 +33,31 @@ const selectEntryQuery =
 const listCacheKey = 'entries';
 const entryCacheKey = 'entry-';
 
-
-let Entries = function () {
-  // Connect to db and cache
-  db.connect(config.mysql); // Note: user defined in the config should be read-only
-  cache.connect();
-
-  function constructEntryUrl(entry) {
-    return '/' + entry.entry_id /*+ '-' + entry.entry_name.trim().toLowerCase().replace(' ', '-')*/;
+class Entries {
+  async connect() {
+    if (!db.isConnected()) {
+      await db.connect(config.mysql);
+    }
+    if (!cache.isConnected()) {
+      await cache.connect();
+    }
   }
 
-  function parseNotes(notes) {
-    return notes.split(notesSeparator);
-  }
-
-  function constructEntryCacheKey(entryId) {
-    return entryCacheKey + entryId;
-  }
-
-  this.getEntries = async (res) => {
+  async getEntries(res) {
     try {
+      console.log('Attempting to retrieve entries from cache');
       const cacheEntries = await cache.get(listCacheKey);
       if (cacheEntries) {
+        console.log('Successfully retrieved entries from cache');
         res.send(JSON.parse(cacheEntries));
       } else {
+        console.log('Attempting to retrieve entries from db');
         const rows = await db.query(selectListQuery);
+        console.log('Successfully retrieved entries from db');
         rows.forEach(entry => {
-          entry.entry_url = constructEntryUrl(entry);
+          entry.entry_url = this._constructEntryUrl(entry);
         });
+        console.log('Attempting to set entries in cache');
         await cache.set(listCacheKey, JSON.stringify(rows));
         res.send(rows);
       }
@@ -68,20 +65,25 @@ let Entries = function () {
       console.log(error);
       res.send([]);
     }
-  };
+  }
 
-  this.getEntry = async (entryId, res) => {
-    const cacheKey = constructEntryCacheKey(entryId);
+  async getEntry(entryId, res) {
+    const cacheKey = this._constructEntryCacheKey(entryId);
     try {
+      console.log('Attempting to retrieve entry:' + entryId + ' from cache');
       const cacheEntry = await cache.get(cacheKey);
       if (cacheEntry) {
+        console.log('Successfully retrieved entry:' + entryId + ' from cache');
         res.send(JSON.parse(cacheEntry));
       } else {
+        console.log('Attempting to retrieve entry:' + entryId + ' from db');
         const rows = await db.query(selectEntryQuery, [entryId]);
         if (rows.length) {
+          console.log('Successfully retrieved entry:' + entryId + ' from db');
           const tempEntry = rows[0];
           let entry = Object.assign({}, tempEntry);
-          entry.notes = parseNotes(tempEntry.notes);
+          entry.notes = this._parseNotes(tempEntry.notes);
+          console.log('Attempting set retrieve entry:' + entryId + ' in cache');
           await cache.set(cacheKey, JSON.stringify(entry));
           res.send(entry);
         } else {
@@ -93,7 +95,19 @@ let Entries = function () {
       console.log(error);
       res.send({});
     }
-  };
-};
+  }
+
+  _constructEntryUrl(entry) {
+    return '/' + entry.entry_id /*+ '-' + entry.entry_name.trim().toLowerCase().replace(' ', '-')*/;
+  }
+
+  _parseNotes(notes) {
+    return notes.split(notesSeparator);
+  }
+
+  _constructEntryCacheKey(entryId) {
+    return entryCacheKey + entryId;
+  }
+}
 
 module.exports = new Entries();

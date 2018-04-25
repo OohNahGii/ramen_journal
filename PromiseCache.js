@@ -7,18 +7,22 @@ class PromiseCache {
   
   connect(config) {
     return new Promise((resolve, reject) => {
-      try {
-        this.cache = redis.createClient();
+      this.cache = redis.createClient({
+        retry_strategy: function (options) {
+          // Todo: more robust retry strategy (multiple attempts, time between retry)
+          const error = new Error('Error connecting to cache');
+          reject(error);
+          return error;
+        }
+      });
+      this.cache.on('connect', function (event) {
         resolve();
-      } catch (error) {
-        reject(error);
-      }
+      });
     });
   }
 
   isConnected() {
-    // Actually check connection by running a simple query?
-    return !!this.cache;
+    return this.cache && this.cache.connected;
   }
 
   get(key) {
