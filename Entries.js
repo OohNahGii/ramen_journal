@@ -35,65 +35,105 @@ const entryCacheKey = 'entry-';
 
 class Entries {
   async connect() {
+    // Catch failed connections separately so that we can still attempt to query the db/cache later.
+    // This handles the case where the cache might be down but the db is up and vice versa.
+    // In the case where only the db is down. we are okay retrieving from cache only since the cached data
+    // should be long-lived and will most likely never change.
     if (!db.isConnected()) {
-      await db.connect(config.mysql);
+      try {
+        await db.connect(config.mysql);
+      } catch (error) {
+        console.log(error);
+      }
     }
     if (!cache.isConnected()) {
-      await cache.connect();
+      try {
+        await cache.connect();
+      } catch (error) {
+        console.log(error);
+      }
     }
   }
 
   async getEntries(res) {
+    console.log('Attempting to retrieve entries from cache');
+    let entries = null;
     try {
-      console.log('Attempting to retrieve entries from cache');
-      const cacheEntries = await cache.get(listCacheKey);
-      if (cacheEntries) {
-        console.log('Successfully retrieved entries from cache');
-        res.send(JSON.parse(cacheEntries));
-      } else {
-        console.log('Attempting to retrieve entries from db');
-        const rows = await db.query(selectListQuery);
-        console.log('Successfully retrieved entries from db');
-        rows.forEach(entry => {
-          entry.entry_url = this._constructEntryUrl(entry);
-        });
-        console.log('Attempting to set entries in cache');
-        await cache.set(listCacheKey, JSON.stringify(rows));
-        res.send(rows);
-      }
+      entries = await cache.get(listCacheKey);
     } catch (error) {
       console.log(error);
-      res.send([]);
+    }
+
+    if (entries) {
+      console.log('Successfully retrieved entries from cache');
+      res.send(JSON.parse(entries));
+    } else {
+      console.log('Attempting to retrieve entries from db');
+      try {
+        entries = await db.query(selectListQuery);
+      } catch (error) {
+        console.log(error);
+        res.send([]);
+        return; // Exit early. Todo: figure out cleaner way to do this
+      }
+
+      console.log('Successfully retrieved entries from db');
+      entries.forEach(entry => {
+        entry.entry_url = this._constructEntryUrl(entry);
+      });
+
+      console.log('Attempting to set entries in cache');
+      try {
+        await cache.set(listCacheKey, JSON.stringify(entries));
+      } catch (error) {
+        console.log(error);
+      }
+      res.send(entries);
     }
   }
 
   async getEntry(entryId, res) {
     const cacheKey = this._constructEntryCacheKey(entryId);
+    let entry = null;
+
+    console.log('Attempting to retrieve entry:' + entryId + ' from cache');
     try {
-      console.log('Attempting to retrieve entry:' + entryId + ' from cache');
-      const cacheEntry = await cache.get(cacheKey);
-      if (cacheEntry) {
-        console.log('Successfully retrieved entry:' + entryId + ' from cache');
-        res.send(JSON.parse(cacheEntry));
-      } else {
-        console.log('Attempting to retrieve entry:' + entryId + ' from db');
-        const rows = await db.query(selectEntryQuery, [entryId]);
-        if (rows.length) {
-          console.log('Successfully retrieved entry:' + entryId + ' from db');
-          const tempEntry = rows[0];
-          let entry = Object.assign({}, tempEntry);
-          entry.notes = this._parseNotes(tempEntry.notes);
-          console.log('Attempting set retrieve entry:' + entryId + ' in cache');
-          await cache.set(cacheKey, JSON.stringify(entry));
-          res.send(entry);
-        } else {
-          console.log('No entry found with id:' + entryId);
-          res.send({});
-        }
-      }
+      entry = await cache.get(cacheKey);
     } catch (error) {
       console.log(error);
-      res.send({});
+    }
+
+    if (entry) {
+      console.log('Successfully retrieved entry:' + entryId + ' from cache');
+      res.send(JSON.parse(entry));
+    } else {
+      console.log('Attempting to retrieve entry:' + entryId + ' from db');
+      let rows = null;
+      try {
+        rows = await db.query(selectEntryQuery, [entryId]);
+      } catch (error) {
+        console.log(error);
+        res.send({});
+        return; // Exit early. Todo: figure out cleaner way to do this
+      }
+
+      if (rows.length) {
+        console.log('Successfully retrieved entry:' + entryId + ' from db');
+        const tempEntry = rows[0];
+        entry = Object.assign({}, tempEntry);
+        entry.notes = this._parseNotes(tempEntry.notes);
+
+        console.log('Attempting set retrieve entry:' + entryId + ' in cache');
+        try {
+          await cache.set(cacheKey, JSON.stringify(entry));
+        } catch (error) {
+          console.log(error);
+        }
+        res.send(entry);
+      } else {
+        console.log('No entry found with id:' + entryId);
+        res.send({});
+      }
     }
   }
 
