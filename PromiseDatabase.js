@@ -15,6 +15,11 @@ class PromiseDatabase {
           resolve();
         }
       });
+      this.db.on('error', error => {
+        console.log(error);
+        // Todo: handle connection loss differently than other errors?
+        this.db = null;
+      });
     });
   }
 
