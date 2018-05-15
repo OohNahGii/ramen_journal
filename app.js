@@ -4,9 +4,9 @@ const app = express();
 
 let entries;
 if (config.entries.mock) {
-  entries = require('./MockEntries.js');
+  entries = require('./MockEntries');
 } else {
-  entries = require('./Entries.js');
+  entries = require('./Entries');
 }
 
 function isNaturalNumber(str) {
@@ -50,4 +50,4 @@ app.get('/entries/:entryId', async (req, res) => {
   }
 });
 
-app.listen(3000);
+module.exports = app;

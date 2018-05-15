@@ -46,13 +46,17 @@ let MockEntries = function () {
     return Object.assign({entry_id: entryId}, stubbedMockEntry);
   }
 
+  this.connect = () => {
+
+  };
+
   this.getEntries = (res) => {
     res.send(generateMockEntries());
-  }
+  };
 
   this.getEntry = (entryId, res) => {
     res.send(generateMockEntry(entryId));
-  }
+  };
 };
 
 module.exports = new MockEntries();
