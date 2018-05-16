@@ -1,6 +1,18 @@
+const fs = require('fs');
 const express = require('express');
-const config = require('./config.json');
 const app = express();
+
+
+let config;
+if (fs.existsSync()) {
+  config = require('config.json');
+} else {
+  config = {
+    entries: {
+      mock: process.env.MOCK_ENTRIES
+    }
+  };
+}
 
 let entries;
 if (config.entries.mock) {
@@ -15,14 +27,14 @@ function isNaturalNumber(str) {
 }
 
 // For testing purposes
-if (config.local) {
+/*if (config.local) {
   app.use((req, res, next) => {
     res.setHeader('Access-Control-Allow-Origin', 'http://localhost:8080');
     res.setHeader('Access-Control-Allow-Methods', 'GET');
     res.setHeader('Access-Control-Allow-Headers', 'X-Requested-With,content-type');
     next();
   });
-}
+}*/
 
 
 app.get('/entries', async (req, res) => {
